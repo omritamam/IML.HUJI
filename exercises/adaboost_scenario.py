@@ -1,6 +1,6 @@
 import numpy as np
 from typing import Tuple
-from IMLearn.learners.metalearners.adaboost import AdaBoost
+from IMLearn.metalearners.adaboost import AdaBoost
 from IMLearn.learners.classifiers import DecisionStump
 from utils import *
 import plotly.graph_objects as go
@@ -50,10 +50,10 @@ def fit_and_evaluate_adaboost(noise, n_learners=250, train_size=5000, test_size=
         train_errs[iteration] = model.partial_loss(train_X, train_y, iteration + 1)
         test_errs[iteration] = model.partial_loss(test_X, test_y, iteration + 1)
 
-    fig = go.Figure([go.Scatter(x=np.arange(n_learners + 1), name="Test rrrors", y=test_errs),
+    fig = go.Figure([go.Scatter(x=np.arange(n_learners + 1), name="Test errors", y=test_errs),
                      go.Scatter(x=np.arange(n_learners + 1), name="Train errors", y=train_errs)])
     fig.update_layout(title_text="Test and train errors as a output of number of learners in noiseless model",
-                      xaxis_title="Number of learners", yaxis_title="Error rate")
+                      xaxis_title="Number of learners", yaxis_title="Error value")
     fig.show()
 
     # Question 2: Plotting decision surfaces
