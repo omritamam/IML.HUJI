@@ -76,74 +76,46 @@ def select_regularization_parameter(n_samples: int = 50, n_evaluations: int = 50
     n_evaluations: int, default = 500
         Number of regularization parameter values to evaluate for each of the algorithms
     """
+
     # Question 6 - Load diabetes dataset and split into training and testing portions
-    X, y = datasets.load_diabetes(return_X_y=True, as_frame=True)
-    train_X, train_y, test_X, test_y = split_train_test(X, y,
-                                                        n_samples / X.shape[0])
-    train_X, test_X, train_y, test_y = train_X.to_numpy(), test_X.to_numpy(), train_y.to_numpy(), test_y.to_numpy()
+    X, y = datasets.load_diabetes(return_X_y=True)
+    X_train, y_train, X_test, y_test = X[:n_samples, :], y[:n_samples], X[n_samples:, :], y[n_samples:]
+
     # Question 7 - Perform CV for different values of the regularization parameter for Ridge and Lasso regressions
-    ridge_train_scores, ridge_validation_scores, lasso_train_scores, lasso_validation_scores = [], [], [], []
-    ridge_lam_range, lasso_lam_range = 0.001, 0.01
-    ridge_lam_array = np.linspace(0, ridge_lam_range, n_evaluations).tolist()
-    lasso_lam_array = np.linspace(0, lasso_lam_range,
-                                  n_evaluations + 1).tolist()[1:]
-    for lam in ridge_lam_array:
-        lam_train_score, lam_val_score = cross_validate(RidgeRegression(lam),
-                                                        train_X, train_y,
-                                                        mean_square_error)
-        ridge_train_scores.append(lam_train_score)
-        ridge_validation_scores.append(lam_val_score)
+    ridge_train_errors, ridge_validation_errors, lasso_train_errors, lasso_validation_errors = \
+        np.zeros(n_evaluations), np.zeros(n_evaluations), np.zeros(n_evaluations), np.zeros(n_evaluations),
 
-    go.Figure() \
-        .add_trace(
-        go.Scatter(x=ridge_lam_array, y=ridge_train_scores,
-                   mode="markers", name="Train Errors")) \
-        .add_trace(
-        go.Scatter(x=ridge_lam_array, y=ridge_validation_scores,
-                   mode="markers", name="Validation Errors")) \
-        .update_layout(
-        title=f"Validation and Train Errors of Ridge Regression",
-        xaxis_title="k", yaxis_title="Error",
-    ) \
-        .show()
+    lst = np.linspace(0.008, 7, n_evaluations)
+    for ind, lam in enumerate(lst):
+        ridge_train_errors[ind], ridge_validation_errors[ind] = cross_validate(RidgeRegression(lam), X_train,
+                                                                               y_train, mean_square_error)
+        lasso_train_errors[ind], lasso_validation_errors[ind] = cross_validate(Lasso(lam), X_train, y_train,
+                                                                               mean_square_error)
 
-    for lam in lasso_lam_array:
-        lam_train_score, lam_val_score = cross_validate(
-            Lasso(lam, max_iter=10000),
-            train_X, train_y,
-            mean_square_error)
-        lasso_train_scores.append(lam_train_score)
-        lasso_validation_scores.append(lam_val_score)
-
-    go.Figure()\
-        .add_trace(
-        go.Scatter(x=lasso_lam_array, y=lasso_train_scores, mode="markers",name="Train Errors"))\
-        .add_trace(
-        go.Scatter(x=lasso_lam_array, y=lasso_validation_scores,
-                   mode="markers", name="Validation Errors"))\
-        .update_layout(
-        title="Train and Validation Errors of Lasso Regression",
-        xaxis_title="k", yaxis_title="Error")\
-        .show()
+    fig = go.Figure([go.Scatter(x=lst, y=ridge_train_errors, name="Ridge Train"),
+                      go.Scatter(x=lst, y=ridge_validation_errors, name="Ridge Validation"),
+                      go.Scatter(x=lst, y=lasso_train_errors, name="Lasso Train"),
+                      go.Scatter(x=lst, y=lasso_validation_errors, name="Lasso Validation")])
+    fig.update_layout(height=600, title_text="Ridge VS Lasso errors as a Function of Lambda")
+    fig.show()
 
     # Question 8 - Compare best Ridge model, best Lasso model and Least Squares model
-    min_lam_ridge = ridge_lam_array[np.argmin(ridge_validation_scores)]
-    min_lam_lasso = lasso_lam_array[np.argmin(lasso_validation_scores)]
-    best_ridge_model = RidgeRegression(min_lam_ridge).fit(train_X, train_y)
-    print(
-        f"Test Error for n_samples: {n_samples}\n  "
-        f"Ridge Regression with lam = {min_lam_ridge} : "
-        f"{best_ridge_model.loss(test_X, test_y)}")
-    best_lasso = Lasso(min_lam_lasso, max_iter=10000).fit(train_X,
-                                                          train_y)
-    best_lasso_test_pred = best_lasso.predict(test_X)
-    print(f"Test Error for n_samples: {n_samples}\n Lasso Regression with lam = {min_lam_lasso} : "
-          f"{mean_square_error(best_lasso_test_pred, test_y)}")
-    my_ls = LinearRegression().fit(train_X, train_y)
-    print(
-        f"Test Error for n_samples: {n_samples}\n  "
-        f"Our LS Algorithm : "
-        f"{my_ls.loss(test_X, test_y)}")
+    best_lam_ridge = lst[np.argmin(ridge_validation_errors)]
+    model = RidgeRegression(best_lam_ridge)
+    model.fit(X_train, y_train)
+    error = mean_square_error(y_test, model.predict(X_test))
+    print(f"Best lambda for Ridge is- {best_lam_ridge}, The Test Error is- {error}")
+
+    best_lam_lasso = lst[np.argmin(lasso_validation_errors)]
+    model = Lasso(best_lam_lasso)
+    model.fit(X_train, y_train)
+    error = mean_square_error(y_test, model.predict(X_test))
+    print(f"Best lambda for Lasso is- {best_lam_lasso}, The Test Error is- {error}")
+
+    model = LinearRegression()
+    model.fit(X_train, y_train)
+    error = mean_square_error(y_test, model.predict(X_test))
+    print(f"The Test Error for Linear Regression is- {error}")
 
 
 if __name__ == '__main__':
